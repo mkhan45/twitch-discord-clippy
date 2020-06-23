@@ -1,0 +1,6 @@
+github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASuANWTrk=
+github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO6wN/zVPAxq5ck=
+github.com/knspriggs/go-twitch v0.0.0-20170820210101-1ddbb1bbce1c h1:YUomM7o6engyPBU0x3QqOTzcs0/2US/+dBsQ/eekF+Y=
+github.com/knspriggs/go-twitch v0.0.0-20170820210101-1ddbb1bbce1c/go.mod h1:PWbKVB37PR032Xh4gDziqr0BrzSJJPW8xJqxFZna2Fw=
+github.com/nicklaw5/helix v0.5.9 h1:THNJ3o+OM+Dh1gPD9qh2jQlVRTPhjB0rYVBus+9GoB4=
+github.com/nicklaw5/helix v0.5.9/go.mod h1:nRcok4VLg8ONQYW/iXBZ24wcfiJjTlDbhgk0ZatOrUY=
