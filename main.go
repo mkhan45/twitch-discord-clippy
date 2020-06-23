@@ -10,13 +10,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
+	"os/signal"
+	"syscall"
 )
 
 var clientID string
 var clientSecret string
-var accountID = "206263706"
+var discordToken string
 var twitchClient *TwitchClient
-var twitchChan chan TwitchClient
+var discordChannel string
+var accountID = "206263706"
+var sentClips = make(map[string]bool)
 
 // OAuthInfo is info for OAuth
 type OAuthInfo struct {
@@ -82,7 +88,7 @@ func (c TwitchClient) getIDFromUsername(username string) string {
 	return parsedResp.ID
 }
 
-func (c TwitchClient) getClips(userID string, count int, startTime time.Time, endTime time.Time) {
+func (c TwitchClient) getClips(userID string, count int, startTime time.Time, endTime time.Time) []string {
 	reqStr := "https://api.twitch.tv/helix/clips?broadcaster_id=%s&first=%d&started_at=%s"
 	startTimeStr := startTime.Format(time.RFC3339)
 	req := c.newRequest(fmt.Sprintf(reqStr, userID, count, startTimeStr), "GET")
@@ -94,7 +100,7 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting clips: %s\n", string(body))
-		return
+		return make([]string, 10)
 	}
 
 	type clip struct {
@@ -113,9 +119,14 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 	err = decoder.Decode(&parsedData)
 	handleErr(err)
 
+	// for _, clip := range parsedData.Data {
+	// 	fmt.Printf("Clip: %+v\n", clip)
+	// }
+	retArr := make([]string, 5)
 	for _, clip := range parsedData.Data {
-		fmt.Printf("Clip: %+v\n", clip)
+		retArr = append(retArr, clip.URL)
 	}
+	return retArr
 }
 
 func makeTwitchClient() *TwitchClient {
@@ -212,6 +223,7 @@ func (c TwitchClient) oAuthRefresh() {
 func init() {
 	clientID = os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
+	discordToken = os.Getenv("DISCORD_TOKEN")
 	fmt.Printf("Client ID: %s\n", clientID)
 }
 
@@ -226,6 +238,35 @@ func main() {
 
 	time.Sleep(12 * time.Second)
 
-	fmt.Printf(twitchClient.getIDFromUsername("fiiisssh"))
 	twitchClient.getClips(accountID, 5, time.Now().Add(-time.Hour*48), time.Now())
+
+	discordClient, err := discordgo.New("Bot " + discordToken)
+	handleErr(err)
+
+	discordClient.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Content == "~~setchannel" {
+			discordChannel = m.ChannelID
+			s.ChannelMessageSend(discordChannel, "Set channel to here")
+			fmt.Printf("Set channel")
+		}
+	})
+	err = discordClient.Open()
+	handleErr(err)
+
+	fmt.Println("Bot running")
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+
+	for {
+		clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*30), time.Now())
+		for _, clipURL := range clipURLs {
+			fmt.Printf("Clip: %s\n", clipURL)
+			if clipURL != "" && sentClips[clipURL] != true {
+				discordClient.ChannelMessageSend(discordChannel, clipURL)
+				sentClips[clipURL] = true
+			}
+		}
+		time.Sleep(time.Second * 15)
+	}
 }

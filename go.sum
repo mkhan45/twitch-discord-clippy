@@ -1,6 +1,12 @@
+github.com/bwmarrin/discordgo v0.21.1 h1:UI2PWwzvn5IFuscYcDc6QB/duhs9MUIjQ4HclcIZisc=
+github.com/bwmarrin/discordgo v0.21.1/go.mod h1:c1WtWUGN6nREDmzIpyTp/iD3VYt4Fpx+bVyfBG7JE+M=
 github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASuANWTrk=
 github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO6wN/zVPAxq5ck=
+github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
+github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/knspriggs/go-twitch v0.0.0-20170820210101-1ddbb1bbce1c h1:YUomM7o6engyPBU0x3QqOTzcs0/2US/+dBsQ/eekF+Y=
 github.com/knspriggs/go-twitch v0.0.0-20170820210101-1ddbb1bbce1c/go.mod h1:PWbKVB37PR032Xh4gDziqr0BrzSJJPW8xJqxFZna2Fw=
 github.com/nicklaw5/helix v0.5.9 h1:THNJ3o+OM+Dh1gPD9qh2jQlVRTPhjB0rYVBus+9GoB4=
 github.com/nicklaw5/helix v0.5.9/go.mod h1:nRcok4VLg8ONQYW/iXBZ24wcfiJjTlDbhgk0ZatOrUY=
+golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16 h1:y6ce7gCWtnH+m3dCjzQ1PCuwl28DDIc3VNnvY29DlIA=
+golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
