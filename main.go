@@ -29,7 +29,7 @@ type TwitchClient struct {
 	httpClient   http.Client
 	ClientID     string
 	ClientSecret string
-	OAuthToken   string
+        AuthInfo OAuthInfo
 }
 
 func handleErr(err error) {
@@ -62,7 +62,6 @@ func makeTwitchClient() *TwitchClient {
 		httpClient:   http.Client{},
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		OAuthToken:   "",
 	}
 }
 
@@ -106,24 +105,61 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	handleErr(err)
 
 	fmt.Printf("%+v\n", parsedResp)
+        c.AuthInfo = parsedResp
+}
+
+func (c TwitchClient) oAuthRefresh() {
+   fmtURL := "https://id.twitch.tv/oauth2/token" +
+   "--data-urlencode" +
+   "?grant_type=refresh_token" +
+   "&refresh_token=%s" +
+   "&client_id=%s" +
+   "&client_secret=%s"
+
+   formattedURL := fmt.Sprintf(fmtURL, c.AuthInfo.RefreshToken, c.ClientID, c.ClientSecret)
+   req := c.newRequest(formattedURL, "POST")
+
+   resp, err := c.httpClient.Do(req)
+   handleErr(err)
+
+   if resp.StatusCode == 400 {
+      body, err := ioutil.ReadAll(resp.Body)
+      handleErr(err)
+      fmt.Printf("Error refreshing token: %s\n", string(body))
+      return
+   }
+
+   type RefreshResponse struct {
+      AccessToken string `json:"access_token"`
+      RefreshToken string `json:"refresh_token"`
+      Scope string `json:"scope"`
+   }
+
+   decoder := json.NewDecoder(resp.Body)
+   var parsedResp RefreshResponse
+   err = decoder.Decode(&parsedResp)
+   handleErr(err)
+
+   c.AuthInfo.AccessToken = parsedResp.AccessToken
+   c.AuthInfo.RefreshToken = parsedResp.RefreshToken
 }
 
 func init() {
-	clientID = os.Getenv("TWITCH_CLIENT_ID")
-	clientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
-	fmt.Printf("Client ID: %s\n", clientID)
+   clientID = os.Getenv("TWITCH_CLIENT_ID")
+   clientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
+   fmt.Printf("Client ID: %s\n", clientID)
 }
 
 func main() {
-	twitchClient = makeTwitchClient()
-	fmt.Printf("OAuth URL: %s\n", twitchClient.oAuthGenURL())
+   twitchClient = makeTwitchClient()
+   fmt.Printf("OAuth URL: %s\n", twitchClient.oAuthGenURL())
 
-	handler := http.NewServeMux()
-	handler.HandleFunc("/twitch/oauthhandler", twitchClient.oAuthHandler)
-	server := http.Server{Addr: ":8080", Handler: handler}
-	go server.ListenAndServe()
-	time.Sleep(15 * time.Second)
-	server.Shutdown(context.TODO())
+   handler := http.NewServeMux()
+   handler.HandleFunc("/twitch/oauthhandler", twitchClient.oAuthHandler)
+   server := http.Server{Addr: ":8080", Handler: handler}
+   go server.ListenAndServe()
+   time.Sleep(15 * time.Second)
+   server.Shutdown(context.TODO())
 
-	// twitchClient.getClips(accountID, 5, time.Now(), time.Now())
+   // twitchClient.getClips(accountID, 5, time.Now(), time.Now())
 }
