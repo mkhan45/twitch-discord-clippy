@@ -24,6 +24,8 @@ var discordChannel string
 var accountID = "206263706"
 var sentClips = make(map[string]bool)
 
+var redirectURI = "http://mikail-khan.com/twitch/oauthhandler"
+
 // OAuthInfo is info for OAuth
 type OAuthInfo struct {
 	AccessToken  string   `json:"access_token"`
@@ -144,7 +146,7 @@ func (c TwitchClient) oAuthGenURL() string {
 		"&response_type=code" +
 		"&scope=%s"
 
-	return fmt.Sprintf(tmplStr, c.ClientID, "http://localhost/twitch/oauthhandler", "user:read:email")
+	return fmt.Sprintf(tmplStr, c.ClientID, redirectURI, "user:read:email")
 }
 
 func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -159,7 +161,7 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 			"&grant_type=authorization_code" +
 			"&redirect_uri=%s"
 
-	formattedURL := fmt.Sprintf(tokenReqURL, c.ClientID, c.ClientSecret, code, "http://localhost/twitch/oauthhandler")
+	formattedURL := fmt.Sprintf(tokenReqURL, c.ClientID, c.ClientSecret, code, redirectURI)
 	req := c.newRequest(formattedURL, "POST")
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
