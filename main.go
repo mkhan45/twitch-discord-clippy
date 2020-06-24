@@ -7,13 +7,12 @@ import (
 
 	// "context"
 	"encoding/json"
+	"github.com/bwmarrin/discordgo"
 	"io/ioutil"
 	"net/http"
-	"time"
-
-	"github.com/bwmarrin/discordgo"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 var clientID string
@@ -24,7 +23,9 @@ var discordChannel string
 var accountID = "206263706"
 var sentClips = make(map[string]bool)
 
-var redirectURI = "http://mikail-khan.com/twitch/oauthhandler"
+var gotInfo = make(chan bool)
+
+var redirectURI = "http://mikail-khan.com:4000/twitch/oauthhandler"
 
 // OAuthInfo is info for OAuth
 type OAuthInfo struct {
@@ -149,6 +150,10 @@ func (c TwitchClient) oAuthGenURL() string {
 	return fmt.Sprintf(tmplStr, c.ClientID, redirectURI, "user:read:email")
 }
 
+func testHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "test")
+}
+
 func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	fmt.Fprintf(w, "trying to validate")
@@ -181,6 +186,7 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	c.AuthInfo = parsedResp
 	twitchClient = &c
 	fmt.Printf("Auth Info: %+v\n", c.AuthInfo)
+	gotInfo <- true
 }
 
 func (c TwitchClient) oAuthRefresh() {
@@ -235,10 +241,11 @@ func main() {
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/twitch/oauthhandler", twitchClient.oAuthHandler)
-	server := http.Server{Addr: ":8080", Handler: handler}
-	go server.ListenAndServe()
+	handler.HandleFunc("/", testHandler)
+	log.Fatal(http.ListenAndServeTLS(":8000", "keys/fullchain.pem", "keys/privkey.pem", handler))
 
-	time.Sleep(12 * time.Second)
+	time.Sleep(24 * time.Second)
+	<-gotInfo
 
 	twitchClient.getClips(accountID, 5, time.Now().Add(-time.Hour*48), time.Now())
 
