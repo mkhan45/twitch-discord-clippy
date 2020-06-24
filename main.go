@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	// "context"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"io/ioutil"
@@ -26,6 +25,13 @@ var sentClips = make(map[string]bool)
 var gotInfo = make(chan bool)
 
 var redirectURI = "http://mikail-khan.com:4000/twitch/oauthhandler"
+
+type clip struct {
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	Title     string `json:"title"`
+	CreatedAt string `json:"created_at"`
+}
 
 // OAuthInfo is info for OAuth
 type OAuthInfo struct {
@@ -106,13 +112,6 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 		return make([]string, 10)
 	}
 
-	type clip struct {
-		ID        string `json:"id"`
-		URL       string `json:"url"`
-		Title     string `json:"title"`
-		CreatedAt string `json:"created_at"`
-	}
-
 	type clipResponse struct {
 		Data []clip `json:"data"`
 	}
@@ -122,9 +121,6 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 	err = decoder.Decode(&parsedData)
 	handleErr(err)
 
-	// for _, clip := range parsedData.Data {
-	// 	fmt.Printf("Clip: %+v\n", clip)
-	// }
 	retArr := make([]string, 5)
 	for _, clip := range parsedData.Data {
 		retArr = append(retArr, clip.URL)
