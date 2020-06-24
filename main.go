@@ -20,7 +20,7 @@ var clientID string
 var clientSecret string
 var discordToken string
 var twitchClient *TwitchClient
-var discordChannel string
+var discordChannels []string
 var accountID = "206263706"
 var sentClips = make(map[string]bool)
 
@@ -254,8 +254,8 @@ func main() {
 
 	discordClient.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if m.Content == "~~setchannel" {
-			discordChannel = m.ChannelID
-			s.ChannelMessageSend(discordChannel, "Set channel to here")
+			discordChannels = append(discordChannels, m.ChannelID)
+			s.ChannelMessageSend(m.ChannelID, "Set channel to here")
 			fmt.Printf("Set channel")
 		}
 	})
@@ -272,8 +272,10 @@ func main() {
 		for _, clipURL := range clipURLs {
 			fmt.Printf("Clip: %s\n", clipURL)
 			if clipURL != "" && sentClips[clipURL] != true {
-				discordClient.ChannelMessageSend(discordChannel, clipURL)
-				sentClips[clipURL] = true
+				for _, channel := range discordChannels {
+					discordClient.ChannelMessageSend(channel, clipURL)
+					sentClips[clipURL] = true
+				}
 			}
 		}
 		time.Sleep(time.Second * 15)
