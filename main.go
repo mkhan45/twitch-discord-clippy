@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -23,9 +24,7 @@ var discordChannel string
 var accountID = "206263706"
 var sentClips = make(map[string]bool)
 
-var gotInfo = make(chan bool)
-
-var redirectURI = "http://mikail-khan.com:4000/twitch/oauthhandler"
+var redirectURI = "http://mikail-khan.com:8000/twitch/oauthhandler"
 
 // OAuthInfo is info for OAuth
 type OAuthInfo struct {
@@ -171,7 +170,7 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
 
-	if resp.StatusCode == 400 {
+	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
 		fmt.Printf("Invalid Response on Gen Code: %+v\n", body)
 		return
@@ -186,7 +185,6 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	c.AuthInfo = parsedResp
 	twitchClient = &c
 	fmt.Printf("Auth Info: %+v\n", c.AuthInfo)
-	gotInfo <- true
 }
 
 func (c TwitchClient) oAuthRefresh() {
@@ -242,10 +240,12 @@ func main() {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/twitch/oauthhandler", twitchClient.oAuthHandler)
 	handler.HandleFunc("/", testHandler)
-	log.Fatal(http.ListenAndServeTLS(":8000", "keys/fullchain.pem", "keys/privkey.pem", handler))
+	go http.ListenAndServeTLS(":8000", "keys/fullchain.pem", "keys/privkey.pem", handler)
 
-	time.Sleep(24 * time.Second)
-	<-gotInfo
+	//time.Sleep(12 * time.Second)
+	fmt.Println("waiting for enter")
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	fmt.Println("continuing")
 
 	twitchClient.getClips(accountID, 5, time.Now().Add(-time.Hour*48), time.Now())
 
