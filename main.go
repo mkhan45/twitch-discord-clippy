@@ -23,7 +23,7 @@ var discordChannels []string
 var accountID = "206263706"
 var sentClips = make(map[string]bool)
 
-var redirectURI = "http://mikail-khan.com:8000/twitch/oauthhandler"
+var redirectURI string
 
 type clip struct {
 	ID        string `json:"id"`
@@ -77,7 +77,7 @@ func (c TwitchClient) getIDFromUsername(username string) string {
 	if resp.StatusCode == 401 {
 		c.oAuthRefresh()
 		return ""
-	} else if resp.StatusCode == 400 {
+	} else if resp.StatusCode != 200 {
 		respBody, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting username: %s", string(respBody))
@@ -104,11 +104,14 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
 
-	if resp.StatusCode != 200 {
+        if resp.StatusCode == 401 {
+		c.oAuthRefresh()
+		return make([]string, 1)
+        } else if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting clips: %s\n", string(body))
-		return make([]string, 10)
+		return make([]string, 1)
 	}
 
 	type clipResponse struct {
@@ -226,6 +229,7 @@ func init() {
 	clientID = os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
 	discordToken = os.Getenv("DISCORD_TOKEN")
+	redirectURI = os.Getenv("TWITCH_REDIRECT_URI")
 	fmt.Printf("Client ID: %s\n", clientID)
 }
 
@@ -238,12 +242,10 @@ func main() {
 	handler.HandleFunc("/", testHandler)
 	go http.ListenAndServeTLS(":8000", "keys/fullchain.pem", "keys/privkey.pem", handler)
 
-	//time.Sleep(12 * time.Second)
+	time.Sleep(12 * time.Second)
 	fmt.Println("waiting for enter")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 	fmt.Println("continuing")
-
-	twitchClient.getClips(accountID, 5, time.Now().Add(-time.Hour*48), time.Now())
 
 	discordClient, err := discordgo.New("Bot " + discordToken)
 	handleErr(err)
