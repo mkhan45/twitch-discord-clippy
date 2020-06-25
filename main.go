@@ -96,18 +96,40 @@ func (c TwitchClient) getIDFromUsername(username string) string {
 	return parsedResp.ID
 }
 
+func (c TwitchClient) isUserStreaming(userID string) bool {
+	reqStr := "https://api.twitch.tv/helix/channels?broadcaster_id=%s"
+	req := c.newRequest(fmt.Sprintf(reqStr, userID), "GET")
+	resp, err := c.httpClient.Do(req)
+	handleErr(err)
+
+	if resp.StatusCode == 401 {
+		c.oAuthRefresh()
+		return c.isUserStreaming(userID)
+	} else if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+		body, err := ioutil.ReadAll(resp.Body)
+		handleErr(err)
+		fmt.Printf("Error getting broadcast: %s\n", string(body))
+		return false
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	handleErr(err)
+	fmt.Printf("Error getting broadcast: %s\n", string(body))
+
+	return false
+}
+
 func (c TwitchClient) getClips(userID string, count int, startTime time.Time, endTime time.Time) []string {
 	reqStr := "https://api.twitch.tv/helix/clips?broadcaster_id=%s&first=%d&started_at=%s"
 	startTimeStr := startTime.Format(time.RFC3339)
 	req := c.newRequest(fmt.Sprintf(reqStr, userID, count, startTimeStr), "GET")
-	req.URL.Query().Add("first", string(count))
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
 
-        if resp.StatusCode == 401 {
+	if resp.StatusCode == 401 {
 		c.oAuthRefresh()
-		return make([]string, 1)
-        } else if resp.StatusCode != 200 {
+		return c.getClips(userID, count, startTime, endTime)
+	} else if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting clips: %s\n", string(body))
