@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -127,9 +127,12 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 	handleErr(err)
 
 	if resp.StatusCode == 401 {
+		body, err := ioutil.ReadAll(resp.Body)
+		handleErr(err)
+		fmt.Printf("Error getting clips: %s\n", string(body))
 		c.oAuthRefresh()
 		return c.getClips(userID, count, startTime, endTime)
-	} else if resp.StatusCode != 200 {
+	} else if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting clips: %s\n", string(body))
@@ -191,7 +194,7 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
 
-	if resp.StatusCode != 200 {
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
 		body, _ := ioutil.ReadAll(resp.Body)
 		fmt.Printf("Invalid Response on Gen Code: %+v\n", body)
 		return
@@ -245,6 +248,7 @@ func (c TwitchClient) oAuthRefresh() {
 
 	c.AuthInfo.AccessToken = parsedResp.AccessToken
 	c.AuthInfo.RefreshToken = parsedResp.RefreshToken
+	c.AuthInfo.Scope = parsedResp.Scope
 }
 
 func init() {
@@ -261,13 +265,12 @@ func main() {
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/twitch/oauthhandler", twitchClient.oAuthHandler)
-	handler.HandleFunc("/", testHandler)
 	go http.ListenAndServeTLS(":8000", "keys/fullchain.pem", "keys/privkey.pem", handler)
 
 	time.Sleep(12 * time.Second)
-	fmt.Println("waiting for enter")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
-	fmt.Println("continuing")
+	//fmt.Println("waiting for enter")
+	//bufio.NewReader(os.Stdin).ReadBytes('\n')
+	//fmt.Println("continuing")
 
 	discordClient, err := discordgo.New("Bot " + discordToken)
 	handleErr(err)
