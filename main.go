@@ -291,7 +291,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
 	for {
-		clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*30), time.Now())
+		clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*60), time.Now())
 		for _, clipURL := range clipURLs {
 			fmt.Printf("Clip: %s\n", clipURL)
 			if clipURL != "" && sentClips[clipURL] != true {
@@ -301,6 +301,6 @@ func main() {
 				}
 			}
 		}
-		time.Sleep(time.Second * 15)
+		time.Sleep(time.Second * 30)
 	}
 }
