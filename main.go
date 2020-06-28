@@ -126,13 +126,7 @@ func (c TwitchClient) getClips(userID string, count int, startTime time.Time, en
 	resp, err := c.httpClient.Do(req)
 	handleErr(err)
 
-	if resp.StatusCode == 401 {
-		body, err := ioutil.ReadAll(resp.Body)
-		handleErr(err)
-		fmt.Printf("Error getting clips: %s\n", string(body))
-		c.oAuthRefresh()
-		return c.getClips(userID, count, startTime, endTime)
-	} else if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error getting clips: %s\n", string(body))
@@ -290,17 +284,27 @@ func main() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
-	for {
-		clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*60), time.Now())
-		for _, clipURL := range clipURLs {
-			fmt.Printf("Clip: %s\n", clipURL)
-			if clipURL != "" && sentClips[clipURL] != true {
-				for _, channel := range discordChannels {
-					discordClient.ChannelMessageSend(channel, clipURL)
-					sentClips[clipURL] = true
+	go func() {
+		tick := 0
+		for {
+			tick++
+			if tick%30 == 0 {
+				twitchClient.oAuthRefresh()
+			}
+
+			clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*60), time.Now())
+			for _, clipURL := range clipURLs {
+				fmt.Printf("Clip: %s\n", clipURL)
+				if clipURL != "" && sentClips[clipURL] != true {
+					for _, channel := range discordChannels {
+						discordClient.ChannelMessageSend(channel, clipURL)
+						sentClips[clipURL] = true
+					}
 				}
 			}
+			time.Sleep(time.Second * 30)
 		}
-		time.Sleep(time.Second * 30)
-	}
+	}()
+
+	<-sc
 }
