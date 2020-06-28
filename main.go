@@ -288,7 +288,7 @@ func main() {
 		tick := 0
 		for {
 			tick++
-			if tick%30 == 0 {
+			if tick%15 == 0 {
 				twitchClient.oAuthRefresh()
 			}
 
