@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 
+	"bytes"
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os/signal"
 	"syscall"
 	"time"
@@ -39,6 +41,12 @@ type OAuthInfo struct {
 	ExpiresIn    int      `json:"expires_in"`
 	Scope        []string `json:"scope"`
 	TokenType    string   `json:"token_type"`
+}
+
+type RefreshInfo struct {
+	AccessToken  string   `json:"access_token"`
+	RefreshToken string   `json:"refresh_token"`
+	Scope        []string `json:"scope"`
 }
 
 // TwitchClient is a twitch client
@@ -205,7 +213,7 @@ func (c TwitchClient) oAuthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Auth Info: %+v\n", c.AuthInfo)
 }
 
-func (c TwitchClient) oAuthRefresh() {
+func (c TwitchClient) oAuthRefresh() RefreshInfo {
 	fmt.Printf("Refreshing OAuth Tokens\n")
 
 	fmtURL := "https://id.twitch.tv/oauth2/token" +
@@ -214,7 +222,7 @@ func (c TwitchClient) oAuthRefresh() {
 		"&client_id=%s" +
 		"&client_secret=%s"
 
-	formattedURL := fmt.Sprintf(fmtURL, c.AuthInfo.RefreshToken, c.ClientID, c.ClientSecret)
+	formattedURL := fmt.Sprintf(fmtURL, url.QueryEscape(c.AuthInfo.RefreshToken), c.ClientID, c.ClientSecret)
 	fmt.Printf("Auth Info: %+v\n", c.AuthInfo)
 	fmt.Printf("Refresh URL: %s\n", formattedURL)
 	req := c.newRequest(formattedURL, "POST")
@@ -226,23 +234,25 @@ func (c TwitchClient) oAuthRefresh() {
 		body, err := ioutil.ReadAll(resp.Body)
 		handleErr(err)
 		fmt.Printf("Error refreshing token: %s\n", string(body))
-		return
+		panic("Couldn't refresh token")
 	}
 
-	type RefreshResponse struct {
-		AccessToken  string   `json:"access_token"`
-		RefreshToken string   `json:"refresh_token"`
-		Scope        []string `json:"scope"`
-	}
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	handleErr(err)
+	fmt.Printf("Refresh response: %s\n", string(bodyBytes))
+
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	decoder := json.NewDecoder(resp.Body)
-	var parsedResp RefreshResponse
+	var parsedResp RefreshInfo
 	err = decoder.Decode(&parsedResp)
 	handleErr(err)
 
 	c.AuthInfo.AccessToken = parsedResp.AccessToken
 	c.AuthInfo.RefreshToken = parsedResp.RefreshToken
 	c.AuthInfo.Scope = parsedResp.Scope
+
+	return parsedResp
 }
 
 func init() {
@@ -288,8 +298,10 @@ func main() {
 		tick := 0
 		for {
 			tick++
-			if tick%15 == 0 {
-				twitchClient.oAuthRefresh()
+			if tick%1 == 0 {
+				refreshInfo := twitchClient.oAuthRefresh()
+				twitchClient.AuthInfo.AccessToken = refreshInfo.AccessToken
+				twitchClient.AuthInfo.RefreshToken = refreshInfo.RefreshToken
 			}
 
 			clipURLs := twitchClient.getClips(accountID, 2, time.Now().Add(-time.Second*60), time.Now())
